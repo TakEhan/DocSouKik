@@ -1,2 +1,9 @@
 # DocSouKik
-独創機械設計 is a class of TokyoTech. We make some LCD device. 
+DocSouKik stands for 独創機械設計(Japanese). 
+独創機械設計 is a class of TokyoTech. 
+We make some educational device in that class. 
+
+We use Python2.7, RaspberryPi A+ and LCD. 
+(LCD: http://www.waveshare.com/product/modules/oleds-lcds/raspberry-pi-lcd/5inch-hdmi-lcd.htm)
+
+Here's its program...
