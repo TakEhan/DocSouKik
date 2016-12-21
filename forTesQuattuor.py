@@ -1,0 +1,367 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
+#!!!!!------------------------------------!!!!!
+#    Execute this in "su", or it won't work
+#!!!!!------------------------------------!!!!!
+
+
+#<<<<<startInit>>>>>
+#for Displaying; show some frames
+import wx
+#for GPIO(requiers sudo)
+import RPi.GPIO as GPIO
+#for showing movies
+from omxplayer import OMXPlayer
+#for sleep/time managing(time has sleep)
+import time
+#from time import sleep
+#for Picture
+from PIL import Image
+#for shutdown
+import os
+import sys
+#for read csv files
+import csv
+#import pandas as pd
+#<<<<<endInit>>>>>
+
+#<<<<<startSetValues>>>>>
+EnvDictionary='MvDict.csv'
+ConvDictionary='CnvDict.csv'
+
+#these two should be recieved another divice.
+#below things are just for test
+realData="forteskey"
+phantomData=00000000
+movieName="ForTes"
+
+dictRM={}#dict for RealData/PhantomData
+dictRP={}#dict for RealData/PhantomData
+
+#<<startCalcRelativePath>>
+def relPath(pathpath):
+    absoPath= os.path.dirname(os.path.abspath(__file__))
+    os.path.normpath(os.path.join(absoPath,pathpath))
+#<<endCalcRelativePath>>
+#<<<<<endSetValues>>>>>
+
+#<<<<<startDictInit>>>>>
+#<<Conv realData->moviePath>>
+#<alter: NoDict>
+if os.path.exists(EnvDictionary) is False:
+    with open(EnvDictionary,'ab') as tempTf:
+        #'a' means: make file unless it's already exist
+        #'b' also has some meaning and you should use, but i don't now that
+        writer=csv.writer(tempTf,lineterminator='\n')
+        writer.writerow([realData,movieName])
+    print "NonExisting of the Dictionary"
+#<read the Dict>
+with open(EnvDictionary,'rb') as tempF:
+    tempDict=csv.reader(tempF)
+    for row in tempDict:
+        dictRM[row[0]]=row[1]
+
+#<<Conv phantomData->realData>>
+#<alter: NoDict>
+if os.path.exists(ConvDictionary) is False:
+    with open(ConvDictionary,'ab') as tempTfC:
+        writerC=csv.writer(tempTfC,lineterminator='\n')
+        writerC.writerow([realData,phantomData])
+    print "NonExisting of the Dictionary at CNV"
+#<read the Dict>
+with open(ConvDictionary,'rb') as tempFC:
+    tempDictConv=csv.reader(tempFC)
+    for rowC in tempDictConv:
+        dictRP[rowC[0]]=rowC[1]
+
+
+
+#<<<<<endDictInit>>>>>
+
+
+#ボタンが四つついたやつのボタン、フレーム、パネルのサイズはすべてほぼ手動です
+
+#globalは必要なときに書いているつもり
+#<<<<<startButtonEvents>>>>>
+#<<<startStartEvent>>>このセクションが呼び出される前にrealDataの設定が必要
+def StartClick(event):#forSTARTbutton:!!!!need be changed!!!!!!!!!!!!!
+    STATbutton.SetBackgroundColour("#0000FF")#JustForTest
+    #<Playing>
+    player = OMXPlayer("movs/"+dictRM[realData]+".mp4")
+    player.play()
+    time.sleep(3)
+    player.pause()
+    #if you got to quit you can't re-open
+    player.quit()
+#<<<endStartEvent>>>
+
+#<<<startMenuEvent>>>
+def MenuClick(event):
+    #wxでフレーム出すときに必要なやつ
+    MenuApp = wx.App()
+    
+    #frameを定義して、作ったフレームを代入
+    global MenuSortFrame
+    MenuSortFrame = MenuSortList()
+    
+    #中央に表示
+    MenuSortFrame.Centre()
+    MenuSortFrame.Show()
+    
+    #フレームを出すときに最後に書くやつ
+    MenuApp.MainLoop()
+#<<<endMenuEvent>>>
+
+def ResetClick(event):
+    STATbutton.SetBackgroundColour("AFAFAF")
+    MENUbutton.SetBackgroundColour("AFAFAF")
+    global realData="NA"
+def PowerOffClick(event):
+    frame.Close()
+    #Close won't work now
+    #Available below row, and system will be shuted down.
+    #maybe we should show some confirmation
+    #os.system("sudo shutdown -h now")
+    sys.exit()
+#<<<<<endButtonEvents>>>>>
+
+
+#<<<<<startListEvents(in Menu)>>>>>NeedToEdit
+#一つ目のリストのイベント設定（分類の選択用）
+def MenuSortListBox(event):
+    #押した選択肢を呼び出して代入
+    obj = event.GetEventObject()
+
+    #startSort(needToBranch)
+    print obj.GetStringSelection()
+    
+    MenuIngApp = wx.App()
+    global MenuIngFrame
+    MenuIngFrame = MenuIngList()
+    MenuIngFrame.Centre()
+    MenuIngFrame.Show()
+    MenuIngApp.MainLoop()
+
+#二つ目のリストのイベント設定（物質の選択用）
+def MenuIngListBox(event):
+    obj=event.GetEventObject()
+    
+    #realDataへの代入
+    realData=obj.GetStringSelection()
+    
+    #物質名を表示するのに使うために定義
+    global name
+    name=obj.GetStringSelection()
+    
+    #出ている三つのフレームをすべて消す（順番テキトー）
+    global MainFrame
+    MenuSortFrame.Close()
+    MenuIngFrame.Close()
+    MainFrame.Close()
+    
+    #ボタン四つの画面を再度表示（realDataを元にBranchさせる（CFrame内で処理））
+    MainApp = wx.App()
+    MainFrame = CFrame()
+    MainFrame.Centre()
+    MainFrame.Show()
+    MainApp.MainLoop()
+#<<<<<endListEvents(in Menu)>>>>>
+
+
+#<<<<<startDefineLists(in Menu)>>>>>
+#一つ目のリスト（分類の選択用）の定義(だいたいこれと似たような感じ)
+class MenuSortList(wx.Frame):
+    def __init__(self):
+        #フレームを定義（testはフレームの上部に出る名前）
+        wx.Frame.__init__(self,None, wx.ID_ANY, u"Sort", size=(400,400))
+        
+        #パネルを定義
+        panel = wx.Panel(self, wx.ID_ANY)
+        #パネルの色を設定
+        panel.SetBackgroundColour("#AFAFAF")
+        
+        #表示される要素を定義、ここは元来決まっているものを表示すれば良い。
+        element_array = ("element_1", "element_2", "element_3", "element_4")
+        
+        #listboxの定義、styleはスクロールの設定
+        SortListBox = wx.ListBox(panel, wx.ID_ANY, size=(400,400), choices=element_array, style=wx.LB_ALWAYS_SB)
+        
+        #イベントと関連づけ
+        SortListBox.Bind(wx.EVT_LISTBOX, MenuSortListBox)
+        
+        #配置（boxsizerで配置、カッコ内は配置していく方向）
+        layout = wx.BoxSizer(wx.HORIZONTAL)
+        #flagはサイズの拡大方法、｜の後ろは余白の設定（テキトー）
+        layout.Add(SortListBox, flag=wx.GROW | wx.ALL, border=3)
+        
+        #パネルのサイズをlayoutに合わせる
+        panel.SetSizer(layout)
+
+#二つ目のリスト（物質の選択用）の定義、一つ目と一緒
+class MenuIngList(wx.Frame):
+    def __init__(self):
+        wx.Frame.__init__(self, None,wx.ID_ANY, u"Ingredients", size=(400,400))
+        panel = wx.Panel(self, wx.ID_ANY)
+        panel.SetBackgroundColour("#AFAFAF")
+        #ここの内容物がどう考えても変化する。引数として受け取るべきか
+        element_array = ("forteskey", "element_2", "element_3")
+        IngListBox = wx.ListBox(panel, wx.ID_ANY, size=(400,400), choices=element_array, style=wx.LB_ALWAYS_SB)
+        IngListBox.Bind(wx.EVT_LISTBOX, MenuIngListBox)
+        layout = wx.BoxSizer(wx.HORIZONTAL)
+        layout.Add(IngListBox, flag=wx.GROW | wx.ALL, border=3)
+        panel.SetSizer(layout)
+#<<<<<endDefineLists(in Menu)>>>>>
+
+
+#<<<<<startDefineMainFrame/Panel>>>>>
+#ボタン四つのやつのフレームの定義、root_panelに、これから定義する三つのパネルを配置する、左右のパネルはボタンの配置のみ
+class CFrame(wx.Frame):
+    def __init__(self):
+        #フレーム定義
+        wx.Frame.__init__(self, None,wx.ID_ANY, u"test", size=(795,408),)
+        
+        #パネル定義
+        root_panel = wx.Panel(self, wx.ID_ANY)
+        
+        left_panel       = LeftPanel(root_panel)
+        center_panel  = CenterPanel(root_panel)
+        right_panel = RightPanel(root_panel)
+        
+        #配置
+        root_layout = wx.BoxSizer(wx.HORIZONTAL)
+        
+        root_layout.Add(left_panel, 0, wx.GROW | wx.ALL)
+        root_layout.Add(center_panel, 0, wx.GROW | wx.ALL)
+        root_layout.Add(right_panel, 0, wx.GROW | wx.ALL)
+        
+        root_panel.SetSizer(root_layout)
+        root_layout.Fit(root_panel)
+        
+
+class LeftPanel(wx.Panel):
+    def __init__(self,parent):
+        wx.Panel.__init__(self, parent, wx.ID_ANY)
+        #1,2はボタンに表示される文字
+        StartButton = wx.Button(self, wx.ID_ANY, u"STAT", size=(150,184))
+        MenuButton  = wx.Button(self, wx.ID_ANY, u"MENU", size=(150,184))
+        #上で定義したイベントと関連付け
+        StartButton.Bind(wx.EVT_BUTTON, StartClick)
+        MenuButton.Bind(wx.EVT_BUTTON, MenuClick)
+        
+        layout = wx.BoxSizer(wx.VERTICAL)
+        layout.Add(StartButton, flag=wx.GROW)
+        layout.Add(MenuButton, flag=wx.GROW)
+        self.SetSizer(layout)
+
+#真ん中の画像と文字の表示部分
+class CenterPanel(wx.Panel):
+    def __init__(self,parent):
+        wx.Panel.__init__(self, parent,wx.ID_ANY,size=(480,400))
+        global realData
+        #初期画面
+        if realData is "NA":
+            #文章を作る、styleは文字を寄せる位置
+            text = wx.StaticText(self, wx.ID_ANY, u"ブロックを設定してください", style=wx.TE_CENTER)
+            
+            #フォントの定義と適用、サイズは最初の数字、あとは不明
+            font = wx.Font(20, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
+            text.SetFont(font)
+            
+            #配置
+            layout = wx.BoxSizer(wx.VERTICAL)
+            layout.Add(text, flag=wx.GROW)
+            self.SetSizer(layout)
+        
+        #ここの下は現状ではrealDataに個別対応する形で分岐だが、それはできない。
+        #例えば、二つ配置のときと一つ配置のときだけ分岐する程度にはするべき。
+        #要一本化
+        elif realData is "forteskey":
+            #画像を読み込む
+            image = wx.Image('C:/Users/tanabe/Pictures/kongoueki.jpg')
+            
+            #bitmapにする、謎
+            self.bitmap = image.ConvertToBitmap()
+            
+            #右辺はよくわからないけどなんかうまくいく
+            gazou=wx.StaticBitmap(self, -1, self.bitmap)
+            
+            #文章を作る
+            text = wx.StaticText(self, wx.ID_ANY, name, style=wx.TE_CENTER)
+            font = wx.Font(20, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
+            text.SetFont(font)
+            
+            #配置
+            layout = wx.BoxSizer(wx.VERTICAL)
+            layout.Add(text, flag=wx.GROW)
+            layout.Add(gazou, flag=wx.GROW)
+            self.SetSizer(layout)
+        
+        #写真を二つ横に配置するとき(要検討)
+        elif realData is 2:
+            image = wx.Image('C:/Users/tanabe/Pictures/kongoueki.jpg')
+            self.bitmap = image.ConvertToBitmap()
+            gazou1=wx.StaticBitmap(self, -1, self.bitmap)
+            image = wx.Image('C:/Users/tanabe/Pictures/kongoueki.jpg')
+            self.bitmap = image.ConvertToBitmap()
+            gazou2=wx.StaticBitmap(self, -1, self.bitmap)
+            text1 = wx.StaticText(self, wx.ID_ANY, name, style=wx.TE_CENTER)
+            text2 = wx.StaticText(self, wx.ID_ANY, name, style=wx.TE_CENTER)
+            font = wx.Font(20, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
+            text1.SetFont(font)
+            text2.SetFont(font)
+            layout = wx.GridSizer(2,2)
+            layout.Add(text1, flag=wx.SHAPED)
+            layout.Add(text2, flag=wx.SHAPED)
+            layout.Add(gazou1, flag=wx.GROW)
+            layout.Add(gazou2, flag=wx.GROW)
+            self.SetSizer(layout)
+        
+        #無視
+        else:
+            image = wx.Image('C:/Users/tanabe/Downloads/IMG_0432.jpg')
+            self.bitmap = image.ConvertToBitmap()
+            gazou=wx.StaticBitmap(self, -1, self.bitmap)
+            text = wx.StaticText(self, wx.ID_ANY, u"中央寄せ", style=wx.TE_CENTER)
+            font = wx.Font(20, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
+            text.SetFont(font)
+            layout = wx.BoxSizer(wx.VERTICAL)
+            #layout.Add(gazou, flag=wx.GROW)
+            layout.Add(text, flag=wx.GROW)
+            self.SetSizer(layout)
+       
+class RightPanel(wx.Panel):
+    def __init__(self,parent):
+        wx.Panel.__init__(self, parent, wx.ID_ANY)
+        ResetButton = wx.Button(self, wx.ID_ANY, u"RSET", size=(150,184))
+        PowerOffButton  = wx.Button(self, wx.ID_ANY, u"Poff", size=(150,184))
+        ResetButton.Bind(wx.EVT_BUTTON, ResetClick)
+        PowerOffButton.Bind(wx.EVT_BUTTON, PowerOffClick)
+        layout = wx.BoxSizer(wx.VERTICAL)
+        layout.Add(ResetButton, flag=wx.GROW)
+        layout.Add(PowerOffButton, flag=wx.GROW)
+        self.SetSizer(layout)
+#<<<<<endDefineMainFrame/Panel>>>>>
+
+
+
+
+#<<<<<startActualMainFlow>>>>>
+if __name__ == "__main__":
+    MainApp = wx.App()
+    global MainFrame
+    MainFrame = CFrame()
+    MainFrame.Centre()
+    MainFrame.Show()
+    MainApp.MainLoop()
+#<<<<<endActualMainFlow>>>>>
+
+
+#<<<<<===================>>>>>
+#<<<<<========EOF========>>>>>
+#<<<<<===================>>>>>
+
+
+
+
